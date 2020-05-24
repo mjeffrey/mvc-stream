@@ -1,0 +1,6 @@
+spring:
+  liquibase:
+    change-log: classpath:migrations/changelog.xml
+  datasource:
+    url: 'jdbc:postgresql://localhost/mj?stringtype=unspecified'
+    driver-class-name: org.postgresql.Driver

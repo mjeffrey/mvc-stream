@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.6.xsd">
+
+    <property name="uuid.type" value="UUID" dbms="h2"/>
+    <property name="uuid.type" value="UUID" dbms="postgresql"/>
+    <property name="uuid.type" value="varchar2(36)" dbms="oracle"/>
+
+    <!-- Derived from ISO20022 -->
+    <property name="iban.type" value="VARCHAR(34)"/>
+    <property name="currency_code.type" value="VARCHAR(3)"/>
+    <property name="country_code.type" value="VARCHAR(2)"/>
+
+    <!-- JPA writes with ms precision -->
+    <property name="timestamp.type" value="DATETIME(3)"/>
+
+    <changeSet id="demo-1" author="mjeffrey">
+        <createTable tableName="legal_entities">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="legal_entities_pk"/>
+            </column>
+            <column name="identifier" type="${uuid.type}">
+                <constraints nullable="false" unique="true" uniqueConstraintName="legal_entities_uk"/>
+            </column>
+            <column name="name" type="varchar(100)">
+                <constraints nullable="false" />
+            </column>
+            <column name="country_code" type="${country_code.type}"></column>
+            <column name="enterprise_number" type="VARCHAR(35)"></column>
+            <column name="last_update_timestamp" type="${timestamp.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="demo-2" author="mjeffrey">
+        <createTable tableName="accounts">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="accounts_pk"/>
+            </column>
+            <column name="identifier" type="${uuid.type}">
+                <constraints nullable="false" unique="true" uniqueConstraintName="accounts_uuid_uk"/>
+            </column>
+            <column name="owner_legal_entity_id" type="BIGINT">
+                <constraints nullable="false" referencedTableName="legal_entities" foreignKeyName="account_legal_entity_fk" referencedColumnNames="id" />
+            </column>
+            <column name="iban" type="${iban.type}">
+                <constraints nullable="true" unique="true" uniqueConstraintName="iban_uk"/>
+            </column>
+            <column name="currency_code" type="${currency_code.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="account_type" type="varchar(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_update_timestamp" type="${timestamp.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
