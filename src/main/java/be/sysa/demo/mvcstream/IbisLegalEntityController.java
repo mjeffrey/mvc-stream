@@ -4,11 +4,6 @@ import be.sysa.demo.mvcstream.model.Account;
 import be.sysa.demo.mvcstream.model.AccountType;
 import be.sysa.demo.mvcstream.model.LegalEntity;
 import be.sysa.demo.mvcstream.repository.LegalEntityRepository;
-import be.sysa.demo.mvcstream.repository.MasterDataView;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonEncoding;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
@@ -24,7 +19,6 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.apache.commons.lang3.RandomStringUtils.randomNumeric;
@@ -35,11 +29,24 @@ import static org.apache.commons.lang3.RandomStringUtils.randomNumeric;
 public class IbisLegalEntityController {
 
     private ObjectMapper objectMapper;
-    private LegalEntityRepository legalEntityRepository;
+    private IbisMasterDataService masterData;
 
+    @GetMapping(value = "/ibis/legal-entity", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<StreamingResponseBody> ibisLegalEntity() throws Exception {
+        Instant after = Instant.now().minus(1000, ChronoUnit.DAYS); // TODO get from request
+        StreamingResponseBody stream = out -> {
+            ObjectMapper objectMapper = this.objectMapper.copy();
+            masterData.streamLegalEntities(out, objectMapper, after);
+        };
+        return new ResponseEntity<>(stream, HttpStatus.OK);
+    }
+
+    // Below this just for generating some data
+    private LegalEntityRepository legalEntityRepository;
     @PostMapping("/ibis/legal-entity/generate")
     @SneakyThrows
-    public void generateLegalEntities(@RequestParam(value = "count", defaultValue = "1") int count ) {
+    @Deprecated(forRemoval = true, since="Only for testing")
+    public void generateLegalEntities(@RequestParam(value = "count", defaultValue = "1") int count) {
         for (int i = 0; i < count; i++) {
             LegalEntity legalEntity = LegalEntity.builder()
                     .countryCode("BE")
@@ -53,40 +60,12 @@ public class IbisLegalEntityController {
         log.info("Generated {} legal entities", count);
     }
 
-    String iban(){
+
+    private String iban() {
         return "BE" + randomNumeric(15);
     }
 
-    String enterpriseNumber(){
+    private String enterpriseNumber() {
         return "BE" + randomNumeric(9);
-    }
-
-    @GetMapping (value = "/ibis/legal-entity", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<StreamingResponseBody> ibisLegalEntity() throws Exception {
-        Instant after = Instant.now().minus(1000, ChronoUnit.DAYS);  // TODO get from request
-        List<? extends MasterDataView> entities = legalEntityRepository.findByLastUpdateTimestampAfter(after);
-
-        // TODO extract and reuse this
-        StreamingResponseBody stream = out -> {
-            JsonFactory factory = new JsonFactory();
-            ObjectMapper objectMapper = this.objectMapper.copy();
-            objectMapper.setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
-
-            JsonGenerator generator = factory.createGenerator(out, JsonEncoding.UTF8);
-            generator.setCodec(objectMapper);
-            generator.writeStartArray();
-            for (MasterDataView entity : entities) {
-                generator.writeStartObject();
-                generator.writeStringField("status", "current");
-                generator.writeStringField("identifier", entity.getIdentifier().toString());
-                generator.writeStringField("lastChangeTimestamp", entity.getLastUpdateTimestamp().toString() ); // TODO format
-                generator.writeNumberField("version", entity.getVersion() );
-                generator.writeObjectField("payload", entity );
-                generator.writeEndObject();
-            }
-            generator.writeEndArray();
-            generator.close();
-        };
-        return new ResponseEntity<>(stream, HttpStatus.OK);
     }
 }
