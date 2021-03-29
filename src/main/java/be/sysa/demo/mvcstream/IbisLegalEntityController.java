@@ -4,7 +4,6 @@ import be.sysa.demo.mvcstream.model.Account;
 import be.sysa.demo.mvcstream.model.AccountType;
 import be.sysa.demo.mvcstream.model.LegalEntity;
 import be.sysa.demo.mvcstream.repository.LegalEntityRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -28,24 +27,23 @@ import static org.apache.commons.lang3.RandomStringUtils.randomNumeric;
 @Slf4j
 public class IbisLegalEntityController {
 
-    private ObjectMapper objectMapper;
-    private IbisMasterDataService masterData;
+    private MasterDataService masterData;
+    private LegalEntityRepository legalEntityRepository;
 
     @GetMapping(value = "/ibis/legal-entity", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<StreamingResponseBody> ibisLegalEntity() throws Exception {
         Instant after = Instant.now().minus(1000, ChronoUnit.DAYS); // TODO get from request
         StreamingResponseBody stream = out -> {
-            ObjectMapper objectMapper = this.objectMapper.copy();
-            masterData.streamLegalEntities(out, objectMapper, after);
+            try (out) {
+                masterData.streamLegalEntities(out, legalEntityRepository, after);
+            }
         };
         return new ResponseEntity<>(stream, HttpStatus.OK);
     }
 
-    // Below this just for generating some data
-    private LegalEntityRepository legalEntityRepository;
     @PostMapping("/ibis/legal-entity/generate")
     @SneakyThrows
-    @Deprecated(forRemoval = true, since="Only for testing")
+    @Deprecated(forRemoval = true, since = "Only for testing")
     public void generateLegalEntities(@RequestParam(value = "count", defaultValue = "1") int count) {
         for (int i = 0; i < count; i++) {
             LegalEntity legalEntity = LegalEntity.builder()
